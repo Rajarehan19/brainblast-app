@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BrainBlast Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --card: #13131f;
+    --accent: #f0c040;
+    --accent2: #ff5f6d;
+    --text: #f0ede8;
+    --muted: #6b6b80;
+    --correct: #3ddc84;
+    --wrong: #ff5f6d;
+    --border: #1e1e2e;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 70% 20%, rgba(240,192,64,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 80%, rgba(255,95,109,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; animation: fadeUp 0.4s ease; }
+  .screen.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── HOME ── */
+  .home-hero {
+    text-align: center;
+    padding: 48px 24px 32px;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .tagline {
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+
+  .category-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .cat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 60%, rgba(240,192,64,0.05));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .cat-card:hover::before,
+  .cat-card.selected::before { opacity: 1; }
+
+  .cat-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .cat-card.selected {
+    border-color: var(--accent);
+    background: rgba(240,192,64,0.08);
+  }
+
+  .cat-icon { font-size: 28px; margin-bottom: 8px; display: block; }
+  .cat-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .cat-count { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .diff-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .diff-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .diff-btn:hover,
+  .diff-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(240,192,64,0.08);
+  }
+
+  .start-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 16px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent) 0%, #e8a020 100%);
+    color: #0a0a0f;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(240,192,64,0.3);
+  }
+
+  .start-btn:active { transform: translateY(0); }
+
+  /* ── LOADING ── */
+  #loading-screen {
+    text-align: center;
+    padding: 80px 24px;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 24px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  /* ── QUIZ ── */
+  .quiz-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 0 4px;
+  }
+
+  .q-counter {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .q-counter span { color: var(--accent); }
+
+  .score-pill {
+    background: rgba(240,192,64,0.12);
+    border: 1px solid rgba(240,192,64,0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .timer-ring {
+    position: relative;
+    width: 48px;
+    height: 48px;
+  }
+
+  .timer-ring svg {
+    transform: rotate(-90deg);
+  }
+
+  .timer-ring circle {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 3;
+  }
+
+  .timer-ring .track {
+    stroke: var(--accent);
+    stroke-dasharray: 126;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s;
+    stroke-linecap: round;
+  }
+
+  .timer-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  .question-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .diff-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  .diff-badge.easy { background: rgba(61,220,132,0.15); color: var(--correct); }
+  .diff-badge.medium { background: rgba(240,192,64,0.15); color: var(--accent); }
+  .diff-badge.hard { background: rgba(255,95,109,0.15); color: var(--wrong); }
+
+  .question-text {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.5;
+    padding-right: 64px;
+    min-height: 60px;
+  }
+
+  .options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .option-btn {
+    width: 100%;
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .option-letter {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+  }
+
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    transform: translateX(4px);
+  }
+
+  .option-btn:hover:not(:disabled) .option-letter {
+    background: rgba(240,192,64,0.2);
+    color: var(--accent);
+  }
+
+  .option-btn.correct {
+    border-color: var(--correct);
+    background: rgba(61,220,132,0.08);
+    color: var(--correct);
+  }
+
+  .option-btn.correct .option-letter {
+    background: var(--correct);
+    color: #0a0a0f;
+  }
+
+  .option-btn.wrong {
+    border-color: var(--wrong);
+    background: rgba(255,95,109,0.08);
+    color: var(--wrong);
+  }
+
+  .option-btn.wrong .option-letter {
+    background: var(--wrong);
+    color: #fff;
+  }
+
+  .option-btn:disabled { cursor: default; }
+
+  .result-indicator {
+    margin-left: auto;
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .option-btn.correct .result-indicator,
+  .option-btn.wrong .result-indicator { opacity: 1; }
+
+  .explanation-box {
+    background: rgba(240,192,64,0.06);
+    border: 1px solid rgba(240,192,64,0.2);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #c8c8d8;
+    line-height: 1.5;
+    display: none;
+  }
+
+  .explanation-box.show { display: block; animation: fadeUp 0.3s ease; }
+  .explanation-box strong { color: var(--accent); }
+
+  .next-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .next-btn.show { display: block; }
+  .next-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── RESULTS ── */
+  #result-screen {
+    text-align: center;
+    padding: 40px 24px;
+  }
+
+  .result-emoji {
+    font-size: 64px;
+    margin-bottom: 16px;
+    display: block;
+    animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes pop {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+  }
+
+  .result-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .result-subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 10px;
+  }
+
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .play-again-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 16px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent) 0%, #e8a020 100%);
+    color: #0a0a0f;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+  }
+
+  .play-again-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(240,192,64,0.3);
+  }
+
+  .home-link {
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .home-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HOME -->
+  <div id="home-screen" class="screen active">
+    <div class="home-hero">
+      <div class="logo">BrainBlast</div>
+      <div class="tagline">AI-Powered Quiz Game</div>
+    </div>
+
+    <div class="category-grid" id="category-grid">
+      <div class="cat-card selected" data-cat="General Knowledge">
+        <span class="cat-icon">🌍</span>
+        <div class="cat-name">General Knowledge</div>
+        <div class="cat-count">All Topics</div>
+      </div>
+      <div class="cat-card" data-cat="Science">
+        <span class="cat-icon">🔬</span>
+        <div class="cat-name">Science</div>
+        <div class="cat-count">Physics, Bio, Chem</div>
+      </div>
+      <div class="cat-card" data-cat="History">
+        <span class="cat-icon">🏛️</span>
+        <div class="cat-name">History</div>
+        <div class="cat-count">World Events</div>
+      </div>
+      <div class="cat-card" data-cat="Pakistan">
+        <span class="cat-icon">🇵🇰</span>
+        <div class="cat-name">Pakistan</div>
+        <div class="cat-count">GK & Culture</div>
+      </div>
+      <div class="cat-card" data-cat="Technology">
+        <span class="cat-icon">💻</span>
+        <div class="cat-name">Technology</div>
+        <div class="cat-count">AI & Computers</div>
+      </div>
+      <div class="cat-card" data-cat="Sports">
+        <span class="cat-icon">⚽</span>
+        <div class="cat-name">Sports</div>
+        <div class="cat-count">Cricket & More</div>
+      </div>
+    </div>
+
+    <div class="diff-row">
+      <button class="diff-btn active" data-diff="easy">Easy</button>
+      <button class="diff-btn" data-diff="medium">Medium</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+    </div>
+
+    <button class="start-btn" id="start-btn">START QUIZ →</button>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading-screen" class="screen">
+    <div class="spinner"></div>
+    <div class="loading-text">AI Questions Generate Ho Rahi Hain...</div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz-screen" class="screen">
+    <div class="quiz-header">
+      <div class="q-counter">Q<span id="q-num">1</span>/10</div>
+      <div class="timer-ring">
+        <svg width="48" height="48" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="20"/>
+          <circle class="track" id="timer-track" cx="24" cy="24" r="20"/>
+        </svg>
+        <div class="timer-num" id="timer-num">20</div>
+      </div>
+      <div class="score-pill">⭐ <span id="score-display">0</span></div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:10%"></div>
+    </div>
+
+    <div class="question-card">
+      <span class="diff-badge easy" id="diff-badge">Easy</span>
+      <p class="question-text" id="question-text">Loading...</p>
+    </div>
+
+    <div class="options-list" id="options-list"></div>
+
+    <div class="explanation-box" id="explanation-box"></div>
+
+    <button class="next-btn" id="next-btn">Next Question →</button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-screen" class="screen">
+    <span class="result-emoji" id="result-emoji">🎉</span>
+    <div class="result-title" id="result-title">EXCELLENT!</div>
+    <div class="result-subtitle" id="result-subtitle">Bohat acha kiya!</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-num" id="stat-score">0</span>
+        <span class="stat-label">Score</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="stat-correct">0</span>
+        <span class="stat-label">Correct</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="stat-time">0s</span>
+        <span class="stat-label">Avg Time</span>
+      </div>
+    </div>
+    <button class="play-again-btn" id="play-again-btn">PLAY AGAIN</button>
+    <button class="home-link" id="home-link-btn">← Back to Home</button>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ──
+let state = {
+  category: 'General Knowledge',
+  difficulty: 'easy',
+  questions: [],
+  current: 0,
+  score: 0,
+  correct: 0,
+  timeTaken: [],
+  timer: null,
+  timeLeft: 20,
+  answered: false,
+  startTime: null
+};
+
+// ── HELPERS ──
+const $ = id => document.getElementById(id);
+const showScreen = id => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+};
+
+// ── HOME LOGIC ──
+document.querySelectorAll('.cat-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.category = card.dataset.cat;
+  });
+});
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.difficulty = btn.dataset.diff;
+  });
+});
+
+$('start-btn').addEventListener('click', startQuiz);
+
+// ── START QUIZ ──
+async function startQuiz() {
+  showScreen('loading-screen');
+
+  const prompt = `Generate exactly 10 quiz questions about "${state.category}" at ${state.difficulty} difficulty level.
+Return ONLY a valid JSON array with no markdown, no backticks, just raw JSON.
+Each object must have:
+- "question": string
+- "options": array of exactly 4 strings (A, B, C, D options without letters)  
+- "correct": number 0-3 (index of correct option)
+- "explanation": short 1-sentence explanation of the correct answer
+
+Example format:
+[{"question":"...","options":["opt1","opt2","opt3","opt4"],"correct":0,"explanation":"..."}]`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    let raw = data.content[0].text.trim();
+    raw = raw.replace(/```json|```/g, '').trim();
+    state.questions = JSON.parse(raw);
+    state.current = 0;
+    state.score = 0;
+    state.correct = 0;
+    state.timeTaken = [];
+    showScreen('quiz-screen');
+    renderQuestion();
+  } catch(e) {
+    alert("Questions load karne mein error. Try karein!");
+    showScreen('home-screen');
+  }
+}
+
+// ── RENDER QUESTION ──
+function renderQuestion() {
+  const q = state.questions[state.current];
+  state.answered = false;
+  state.startTime = Date.now();
+
+  // Header
+  $('q-num').textContent = state.current + 1;
+  $('score-display').textContent = state.score;
+  $('progress-fill').style.width = ((state.current + 1) / 10 * 100) + '%';
+
+  // Diff badge
+  const badge = $('diff-badge');
+  badge.textContent = state.difficulty;
+  badge.className = `diff-badge ${state.difficulty}`;
+
+  // Question
+  $('question-text').textContent = q.question;
+
+  // Options
+  const letters = ['A','B','C','D'];
+  const list = $('options-list');
+  list.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `
+      <span class="option-letter">${letters[i]}</span>
+      <span>${opt}</span>
+      <span class="result-indicator"></span>
+    `;
+    btn.addEventListener('click', () => selectAnswer(i, btn));
+    list.appendChild(btn);
+  });
+
+  // Explanation + next
+  $('explanation-box').classList.remove('show');
+  $('next-btn').classList.remove('show');
+
+  // Timer
+  startTimer();
+}
+
+// ── TIMER ──
+function startTimer() {
+  clearInterval(state.timer);
+  state.timeLeft = 20;
+  updateTimerUI();
+
+  state.timer = setInterval(() => {
+    state.timeLeft--;
+    updateTimerUI();
+    if(state.timeLeft <= 0) {
+      clearInterval(state.timer);
+      if(!state.answered) timeUp();
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  $('timer-num').textContent = state.timeLeft;
+  const circumference = 126;
+  const offset = circumference * (1 - state.timeLeft / 20);
+  $('timer-track').style.strokeDashoffset = offset;
+
+  const track = $('timer-track');
+  if(state.timeLeft <= 5) track.style.stroke = 'var(--wrong)';
+  else if(state.timeLeft <= 10) track.style.stroke = 'var(--accent)';
+  else track.style.stroke = 'var(--accent)';
+
+  $('timer-num').style.color = state.timeLeft <= 5 ? 'var(--wrong)' : 'var(--accent)';
+}
+
+function timeUp() {
+  state.answered = true;
+  const timeTaken = 20;
+  state.timeTaken.push(timeTaken);
+
+  // Show correct answer
+  const btns = $('options-list').querySelectorAll('.option-btn');
+  btns.forEach(b => b.disabled = true);
+  btns[state.questions[state.current].correct].classList.add('correct');
+  btns[state.questions[state.current].correct].querySelector('.result-indicator').textContent = '✓';
+
+  showExplanation();
+  $('next-btn').classList.add('show');
+}
+
+// ── SELECT ANSWER ──
+function selectAnswer(index, btn) {
+  if(state.answered) return;
+  state.answered = true;
+  clearInterval(state.timer);
+
+  const taken = Math.round((Date.now() - state.startTime) / 1000);
+  state.timeTaken.push(taken);
+
+  const correct = state.questions[state.current].correct;
+  const btns = $('options-list').querySelectorAll('.option-btn');
+  btns.forEach(b => b.disabled = true);
+
+  if(index === correct) {
+    btn.classList.add('correct');
+    btn.querySelector('.result-indicator').textContent = '✓';
+    const timeBonus = Math.max(0, state.timeLeft * 5);
+    const points = state.difficulty === 'easy' ? 10 : state.difficulty === 'medium' ? 20 : 30;
+    state.score += points + timeBonus;
+    state.correct++;
+  } else {
+    btn.classList.add('wrong');
+    btn.querySelector('.result-indicator').textContent = '✗';
+    btns[correct].classList.add('correct');
+    btns[correct].querySelector('.result-indicator').textContent = '✓';
+  }
+
+  $('score-display').textContent = state.score;
+  showExplanation();
+  $('next-btn').classList.add('show');
+}
+
+function showExplanation() {
+  const q = state.questions[state.current];
+  const box = $('explanation-box');
+  box.innerHTML = `<strong>💡 Explanation:</strong> ${q.explanation}`;
+  box.classList.add('show');
+}
+
+// ── NEXT QUESTION ──
+$('next-btn').addEventListener('click', () => {
+  state.current++;
+  if(state.current >= state.questions.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+});
+
+// ── RESULTS ──
+function showResults() {
+  showScreen('result-screen');
+
+  const pct = Math.round(state.correct / state.questions.length * 100);
+  const avgTime = Math.round(state.timeTaken.reduce((a,b) => a+b, 0) / state.timeTaken.length);
+
+  let emoji, title, subtitle;
+  if(pct >= 90)      { emoji='🏆'; title='GENIUS!'; subtitle='Kamaal kar diya aapne!'; }
+  else if(pct >= 70) { emoji='🎉'; title='EXCELLENT!'; subtitle='Bohat acha kiya!'; }
+  else if(pct >= 50) { emoji='👍'; title='GOOD JOB!'; subtitle='Theek tha, aur karo practice!'; }
+  else               { emoji='💪'; title='KEEP TRYING!'; subtitle='Agle baar aur acha karoge!'; }
+
+  $('result-emoji').textContent = emoji;
+  $('result-title').textContent = title;
+  $('result-subtitle').textContent = subtitle;
+  $('stat-score').textContent = state.score;
+  $('stat-correct').textContent = `${state.correct}/10`;
+  $('stat-time').textContent = `${avgTime}s`;
+}
+
+$('play-again-btn').addEventListener('click', startQuiz);
+$('home-link-btn').addEventListener('click', () => showScreen('home-screen'));
+</script>
+</body>
+</html>
